@@ -1,0 +1,135 @@
+from rich.console import Console 
+from multiprocessing.pool import ThreadPool  
+import json 
+import socket 
+import sys
+import os 
+
+console = Console()  
+class Main:
+    
+    
+#########################################################################################
+#########################################################################################
+
+
+
+    PORTS = "ports/common_ports.json" 
+    
+    def __init__(self):
+        self.hostname = ""  
+        self.open_ports = []  
+
+
+    def ports_to_scan(self):
+        with open(main.PORTS, "r") as file:  
+            data = json.load(file)  
+            
+       
+        self.ports_info = {int(port_number): data[port_number] for port_number in data}
+
+
+#########################################################################################
+#########################################################################################
+
+   
+    def scan(self):
+        cpus = os.cpu_count()  # Get number of CPU cores
+        console.print("\n[bold yellow]Scanning...[/bold yellow]\n")  
+        
+        
+        with ThreadPool(cpus) as operation:
+            for i, _ in enumerate(
+                operation.imap(self.scan_single_port, self.ports_info.keys()), 1
+            ):
+                progress_bar(i, len(self.ports_info))  
+                
+        print("\n")  
+        self.finish_message()         
+    
+    
+
+    def scan_single_port(self, port):
+        connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  
+        connection.settimeout(1)  
+        
+        
+        connection_status = connection.connect_ex((self.hostname, port))
+        if connection_status == 0:  # If connection is successful (port is open)
+            self.open_ports.append(port)  
+            
+        connection.close()  
+
+    def finish_message(self):
+        if self.open_ports:  
+            console.print("{:<10}".format("[bold yellow]PORT[/bold yellow]"))  
+            
+           
+            for port in self.open_ports:
+                console.print("{:<10}".format(f"[green]{str(port)} (OPEN)[/green]"))
+                
+        else:  
+            console.print("[bold red]No open ports.[/bold red]") 
+            
+        print("")
+     
+
+    @staticmethod
+    def resolve_hostname(target):
+        try:
+            ipv4 = socket.gethostbyname(target)  
+        except socket.gaierror as errorID: 
+            console.print(f"[bold red]{errorID}. Exiting program.[/bold red]")  
+            sys.exit() 
+            
+        console.print(f"[bold blue]IP: [/bold blue]{ipv4}")  
+        return ipv4 
+
+
+    @staticmethod
+    def logo():
+        console.print(
+            """
+            [bold blue]
+            _____                   _        _____                                              
+            |  __ \                 | |      / ____|                                             
+            | |__) |   ___    _ __  | |_    | (___     ___    __ _   _ __    _ __     ___   _ __ 
+            |  ___/   / _ \  | '__| | __|    \___ \   / __|  / _` | | '_ \  | '_ \   / _ \ | '__|
+            | |      | (_) | | |    | |_     ____) | | (__  | (_| | | | | | | | | | |  __/ | |   
+            |_|       \___/  |_|     \__|   |_____/   \___|  \__,_| |_| |_| |_| |_|  \___| |_|   
+                                                                                                
+                                       By LF-D3v  
+                                https://github.com/LF-D3v                                                                             
+            [/bold blue]
+            """
+        ) 
+        
+        
+   
+    def start_program(self):
+        self.logo()  # Print logo
+        self.ports_to_scan() 
+        
+        try:
+            target = console.input("[bold blue]Insert hostname or IP: ") 
+        except KeyboardInterrupt:  # Handle keyboard interrupt (Ctrl+C)
+            console.print(f"[bold red]\nExiting.[/bold red]") 
+            sys.exit()  
+            
+        self.hostname = self.resolve_hostname(target)  
+        
+        self.scan()               
+        
+def progress_bar(index, indexTotal):
+    length = 50 
+    current_length = length * index // indexTotal 
+    symbol = "+" * current_length + "-" * (length - current_length)  
+    
+    progress = "%.1f" % (index / indexTotal * 100)  
+    
+    console.print(f"[bold red]<[bold yellow]{symbol}[bold red]> [bold blue]({progress}%)[/bold blue]", end="\r")  
+
+
+if __name__ == "__main__":
+    main = Main()  
+    main.start_program()  
